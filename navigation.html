@@ -1044,7 +1044,6 @@
 	        </div>
 	        <div class="menu" id="menu">
 	            <ul class="scrollcontent">
-	                <!--左侧目录，按照需要修改和添加，参考已有的修改名称和href-->
 			        <li><a href="#row-1">视频教程</a></li>
 			        <li><a href="#row-2">在线学习</a></li>
 	        	</ul>
@@ -1108,9 +1107,9 @@
             </footer> -->
 
              <!--代码源自小呆导航的开源代码，遵循MIT协议，此处保留源代码的声明-->     
-            <span style="position: fixed;bottom: 0;left:0;" id="copyright">
+            <div id="copyright">
                 本站内容源自互联网，如有内容侵犯了你的权益，请联系删除相关内容，联系邮箱：1099607871@qq.com  Copyright © 2017-2018 小呆导航（webjike.com）All Rights Reserved
-            </span>
+            </div>
         </div>
         <!--内容区域-->
     </div>
@@ -1123,6 +1122,7 @@
     <!-- 配置文件 -->
     <script charset="utf-8" src="./config.js"></script>
     <script>
+    	
     	// 侧边栏相关代码
     	class Pushbar {
 		  constructor(config = { overlay: true, blur: false }) {
@@ -1363,6 +1363,30 @@
             return ret
         }
 
+        var isScroll = function (el) {
+             // test targets
+             var elems = el ? [el] : [document.documentElement, document.body];
+             var scrollX = false, scrollY = false;
+             for (var i = 0; i < elems.length; i++) {
+                 var o = elems[i];
+                 // test horizontal
+                 var sl = o.scrollLeft;
+                 o.scrollLeft += (sl > 0) ? -1 : 1;
+                 o.scrollLeft !== sl && (scrollX = scrollX || true);
+                 o.scrollLeft = sl;
+                 // test vertical
+                 var st = o.scrollTop;
+                 o.scrollTop += (st > 0) ? -1 : 1;
+                 o.scrollTop !== st && (scrollY = scrollY || true);
+                 o.scrollTop = st;
+             }
+             // ret
+             return {
+                 scrollX: scrollX,
+                 scrollY: scrollY
+             };
+         };
+
         //根据配置初始化页面
         function init(){
             // 开始根据config.js配置动态生成页面
@@ -1429,7 +1453,16 @@
             $("#header-logo").attr("src",config.logo);
             $("#copyright").html(config.copyright)
             document.body.style.backgroundImage="url("+config.bodyBackgroundImage+")"
-            document.body.style.backgroundRepeat=config.backgroundRepeat     
+            document.body.style.backgroundRepeat=config.backgroundRepeat
+
+            // 如果页面可以滚动，版权信息放在文档最下面
+            // 如果内容少不可滚动，版权信息固定在屏幕下方
+            if(!isScroll().scrollY){
+                let copyright = $("#copyright")
+                copyright.css("position","fixed");
+                copyright.css("bottom",0)
+                copyright.css("left",0)
+            }    
         }      
 
         window.onscroll = function() {

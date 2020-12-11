@@ -925,6 +925,85 @@
         #header-logo {
             margin-right: 10px;
         }
+
+        .pushbar.opened {
+			display:block;
+		}
+		html.pushbar_locked {
+			overflow:hidden;
+			-ms-touch-action:none;
+			touch-action:none;
+		}
+		.pushbar_locked .pushbar_main_content.pushbar_blur {
+			filter:blur(15px);
+		}
+		.pushbar {
+			z-index:1000;
+			position:fixed;
+			will-change:transform;
+			overflow-y:auto;
+			transition:transform 0.5s ease;
+			will-change:transform;
+			background:#fff;
+		}
+		.pushbar_overlay {
+			z-index:-999;
+			position:fixed;
+			width:100%;
+			max-width:100%;
+			height:100%;
+			min-height:100vh;
+			top:0;
+			left:0;
+			will-change:opacity;
+			transition:opacity 0.5s ease;
+			opacity:0;
+			will-change:opacity;
+			background:#3c3442;
+		}
+		html.pushbar_locked .pushbar_overlay {
+			opacity:0.8;
+			z-index:999;
+			transition:opacity 0.5s ease;
+		}
+		.pushbar.from_left {
+			top:0;
+			left:0;
+			width:256px;
+			max-width:100%;
+			height:100%;
+			min-height:100vh;
+			transform:translateZ(0) translateX(-100%);
+		}
+		.pushbar.from_right {
+			top:0;
+			right:0;
+			width:256px;
+			max-width:100%;
+			height:100%;
+			min-height:100vh;
+			transform:translateZ(0) translateX(100%);
+		}
+		.pushbar.from_top {
+			top:0;
+			left:0;
+			width:100%;
+			max-width:100%;
+			min-height:150px;
+			transform:translateZ(0) translateY(-100%);
+		}
+		.pushbar.from_bottom {
+			bottom:0;
+			left:0;
+			width:100%;
+			max-width:100%;
+			min-height:150px;
+			transform:translateZ(0) translateY(100%);
+		}
+		.pushbar.opened {
+			transform:translateX(0px) translateY(0px);
+		}
+
     </style>
 </head>
 
@@ -958,19 +1037,34 @@
         </div>
     </header>
     <div id="content">
-        <!--左侧目录，导航跳转-->
-        <!-- <div class="left-bar">
-        <div class="header">
-            <h2>目录</h2>
-        </div>
-        <div class="menu" id="menu">
-            <ul class="scrollcontent">
-                <!--左侧目录，按照需要修改和添加，参考已有的修改名称和href-->
-        <li><a href="#row-1">视频教程</a></li>
-        <li><a href="#row-2">在线学习</a></li>
-        </ul>
-    </div>
-    </div> -->
+
+    	<aside data-pushbar-id="left" class="pushbar from_left">
+    		<div class="header">
+	            <h2>目录</h2>
+	        </div>
+	        <div class="menu" id="menu">
+	            <ul class="scrollcontent">
+	                <!--左侧目录，按照需要修改和添加，参考已有的修改名称和href-->
+			        <li><a href="#row-1">视频教程</a></li>
+			        <li><a href="#row-2">在线学习</a></li>
+	        	</ul>
+	    	</div>
+    	</aside>
+
+		<aside data-pushbar-id="right" class="pushbar from_right"></aside>
+
+		<aside data-pushbar-id="top" class="pushbar from_top"></aside>
+
+		<aside data-pushbar-id="bottom" class="pushbar from_bottom"></aside>
+
+		<!-- <div class="htmleaf-demo center">
+		  <a href="#" data-pushbar-target="left" >左侧侧边栏</a>
+		  <a href="#" data-pushbar-target="right">右侧侧边栏</a>
+		  <a href="#" data-pushbar-target="top">上部侧边栏</a>
+		  <a href="#" data-pushbar-target="bottom">下部侧边栏</a>
+		</div> -->
+
+        
     <!--内容-->
     <div style="margin-top: 100px;" class="main">
         <div class="container content-box">
@@ -1029,6 +1123,167 @@
     <!-- 配置文件 -->
     <script charset="utf-8" src="./config.js"></script>
     <script>
+    	// 侧边栏相关代码
+    	class Pushbar {
+		  constructor(config = { overlay: true, blur: false }) {
+		    this.activeBar = null;
+		    this.overlay = false;
+		    this.type = config.type || 'left'
+		    this.triggerValue = 20
+		    if (config.overlay) {
+		      this.overlay = document.createElement('div');
+		      this.overlay.classList.add('pushbar_overlay');
+		      document.querySelector('body').appendChild(this.overlay);
+		    }
+
+		    if (config.blur) {
+		      const mainContent = document.querySelector('.pushbar_main_content');
+		      if (mainContent) {
+		        mainContent.classList.add('pushbar_blur');
+		      }
+		    }
+
+		    this.bindEvents();
+		  }
+
+		  get opened() {
+		    const { activeBar } = this;
+		    return Boolean(activeBar instanceof HTMLElement && activeBar.classList.contains('opened'));
+		  }
+		  
+		  get activeBarId() {
+		    const { activeBar } = this;
+		    return activeBar instanceof HTMLElement && activeBar.getAttribute('data-pushbar-id');
+		  }
+
+		  static dispatchOpen(pushbar) {
+		    const event = new CustomEvent('pushbar_opening', { bubbles: true, detail: { pushbar } });
+		    pushbar.dispatchEvent(event);
+		  }
+
+		  static dispatchClose(pushbar) {
+		    const event = new CustomEvent('pushbar_closing', { bubbles: true, detail: { pushbar } });
+		    pushbar.dispatchEvent(event);
+		  }
+
+		  static findElementById(pushbarId) {
+		    return document.querySelector(`[data-pushbar-id="${pushbarId}"]`);
+		  }
+
+		  handleOpenEvent(e) {
+		    e.preventDefault();
+		    const pushbarId = e.currentTarget.getAttribute('data-pushbar-target');
+		    this.handleOpenEvent0(pushbarId)
+		  }
+
+		  handleOpenEvent0(pushbarId) {
+		    if (pushbarId) {
+		      this.open(pushbarId);
+		    }
+		  }
+
+		  handleCloseEvent(e) {
+		    e.preventDefault();
+		    this.handleCloseEvent0();
+		  }
+
+		  handleCloseEvent0() {
+		    this.close();
+		  }
+
+		  handleKeyEvent(e) {
+		    if (this.opened && e.keyCode === 27) {
+		      this.close();
+		    }
+		  }
+
+		  bindEvents() {
+		    const triggers = document.querySelectorAll('[data-pushbar-target]');
+		    const closers = document.querySelectorAll('[data-pushbar-close]');
+
+		    triggers.forEach(trigger => trigger.addEventListener('click', e => this.handleOpenEvent(e), false));
+		    closers.forEach(closer => closer.addEventListener('click', e => this.handleCloseEvent(e), false));
+
+		    let _this = this
+		    if(this.type == 'left'){
+		    	document.onmousemove = function (e) {
+		    		if(e.clientX <= _this.triggerValue){
+		    			_this.handleOpenEvent0('left')
+		    		}
+				}
+		    }else if(this.type == 'bottom'){
+		    	document.onmousemove = function (e) {
+		    		if(e.clientY >= document.body.clientHeight - _this.triggerValue){
+		    			_this.handleOpenEvent0('bottom')
+		    		}
+				}
+		    }else if(this.type == 'right'){
+		    	document.onmousemove = function (e) {
+		    		if(e.clientX >= document.body.clientWidth - _this.triggerValue){
+		    			_this.handleOpenEvent0('right')
+		    		}
+				}
+		    }else if(this.type == 'top'){
+		    	document.onmousemove = function (e) {
+		    		if(e.clientY <= _this.triggerValue){
+		    			_this.handleOpenEvent0('top')
+		    		}
+				}
+		    }
+
+		    if (this.overlay) {
+		      this.overlay.addEventListener('click', e => this.handleCloseEvent(e), false);
+		    }
+		    document.addEventListener('keyup', e => this.handleKeyEvent(e));
+		  }
+
+		  open(pushbarId) {
+		    // Current bar is already opened
+		    if (String(pushbarId) === this.activeBarId && this.opened) {
+		      return;
+		    }
+		    
+		    // Get new pushbar target
+		    const pushbar = Pushbar.findElementById(pushbarId);
+
+		    if (!pushbar) return;
+		    
+		    // Close active bar (if exists)
+		    if (this.opened) {
+		      this.close();
+		    }
+		    
+		    Pushbar.dispatchOpen(pushbar);
+		    pushbar.classList.add('opened');
+
+		    const Root = document.querySelector('html');
+		    Root.classList.add('pushbar_locked');
+		    Root.setAttribute('pushbar', pushbarId);
+		    this.activeBar = pushbar;
+		  }
+
+		  close() {
+		    const { activeBar } = this;
+		    if (!activeBar) return;
+		    
+		    Pushbar.dispatchClose(activeBar);
+		    activeBar.classList.remove('opened');
+
+		    const Root = document.querySelector('html');
+		    Root.classList.remove('pushbar_locked');
+		    Root.removeAttribute('pushbar');
+		    
+		    this.activeBar = null;
+		  }
+		}
+
+		var pushbar = new Pushbar({
+			blur:true,
+			overlay:true,
+			type:'top'
+		});
+
+
         // 获取函数的注释文本，用来实现多行文本定义
         Function.prototype.getMultiLine = function() {  
             var lines = new String(this);  
